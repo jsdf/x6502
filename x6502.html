@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>x6502</title>
+    <style>
+      .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
+      textarea.emscripten { font-family: monospace; width: 80%; }
+      div.emscripten { text-align: center; }
+      div.emscripten_border { border: 1px solid black; }
+      /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
+      canvas.emscripten { border: 0px none;  display: none; }
+      .stuff { display: none }
+      body {
+        text-align: center;
+        font-family: Helvetica, sans-serif;
+      }
+
+      #playpause  {
+        min-width: 150px;
+        font-size: 40px;
+        margin: 20px auto;
+        display: block;
+      }
+      #stdout  {
+        font-size: 20px;
+      }
+      #stderr  {
+        font-size: 14px;
+      }
+
+      a {
+        color: #18E3FF;
+      }
+      .description { 
+        background: rgba(0, 0, 0, 0.5);
+        font-size: 14px;
+        padding: 10px;
+        color: #FFF;
+      }
+      @media (min-width: 900px) {
+        .description { 
+          position: absolute;
+          width: 30%;
+          text-align: left;
+          top: 0;
+          right: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+  <h1>x6502</h1>
+  <div class="description">
+    <a href="http://haldean.github.io/x6502/">x6502</a> is an emulator for the 6502 class of processors. It currently supports the full instruction set of the 6502 (plus a few extensions) and has an extremely rudimentary simulated I/O bus. It should be able to run arbitrary x6502 bytecode with "correct" results, although most binaries for common 6502 systems (Amiga, C64, Apple II, etc) won't function as expected, since they expect I/O devices to be mapped into memory where there are currently none.
+    <br><a href="http://haldean.github.io/x6502/">haldean.github.io/x6502/</a>
+    <br><a href="http://jamesfriend.com.au">jamesfriend.com.au</a>
+    <br><a href="http://twitter.com/jsdfco">@jsdfco</a>
+
+
+  </div>
+  <p>go to demo: <a href="x6502.html?demo=alphabet">alphabet</a> | <a href="x6502.html?demo=echo">echo</a></p>
+          <input type="button" id="playpause" value="Pause execution">
+
+    <div class="emscripten" id="status">Downloading...</div>
+    <div class="stuff">
+      <div class="emscripten_border">
+        <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+      </div>
+      <div class="emscripten">
+        <progress value="0" max="100" id="progress" hidden=1></progress>  
+      </div>
+      <div class="emscripten">
+        <input type="checkbox" id="resize">Resize canvas
+        <input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer
+        &nbsp;&nbsp;&nbsp;
+        <input type="button" value="Fullscreen" onclick="Module.requestFullScreen(document.getElementById('pointerLock').checked, 
+                                                                                  document.getElementById('resize').checked)">
+      </div>
+    </div>
+    <h3>stdout</h3>
+    <textarea class="emscripten" id="stdout" rows="8"></textarea>
+
+    <h3>stderr</h3>
+    <textarea class="emscripten" id="stderr" rows="20"></textarea>
+    
+    <script type="text/javascript">
+      window.parsedQueryString = (function(a) {
+        if (a == "") return {};
+        var b = {};
+        for (var i = 0; i < a.length; ++i)
+        {
+            var p=a[i].split('=');
+            if (p.length != 2) continue;
+            b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, " "));
+        }
+        return b;
+    })(window.location.search.substr(1).split('&'))
+    </script>
+    <script type='text/javascript'>
+      var demoToRun = parsedQueryString.demo || 'alphabet'
+
+      if (demoToRun == 'alphabet') {
+        window.prompt = function() {return '\n'};
+      }
+
+      var Module = {
+        // 'arguments':['alphabet'],
+        'arguments':[demoToRun],
+        preRun: [],
+        postRun: [],
+        print: (function() {
+          var element = document.getElementById('stdout');
+          element.value = ''; // clear browser cache
+          return function(text) {
+            text = Array.prototype.slice.call(arguments).join(' ');
+            element.value += text + "\n";
+            element.scrollTop = 99999; // focus on bottom
+          };
+        })(),
+        printErr: (function() {
+          var element = document.getElementById('stderr');
+          element.value = ''; // clear browser cache
+          return function(text) {
+            // text = Array.prototype.slice.call(arguments).join(' ');
+            element.value = (element.value + text + "\n").slice(-10000);
+            element.scrollTop = 99999; // focus on bottom
+          };
+        })(),
+        canvas: document.getElementById('canvas'),
+        setStatus: function(text) {
+          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+          if (text === Module.setStatus.text) return;
+          var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+          var now = Date.now();
+          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
+          var statusElement = document.getElementById('status');
+          var progressElement = document.getElementById('progress');
+          if (m) {
+            text = m[1];
+            progressElement.value = parseInt(m[2])*100;
+            progressElement.max = parseInt(m[4])*100;
+            progressElement.hidden = false;
+          } else {
+            progressElement.value = null;
+            progressElement.max = null;
+            progressElement.hidden = true;
+          }
+          statusElement.innerHTML = text;
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        }
+      };
+      Module.setStatus('Downloading...');
+    </script>
+    <script async type="text/javascript" src="x6502.js"></script>
+    <script type="text/javascript">
+    (function  () {
+      var playpause = document.getElementById('playpause');
+
+      function resumeExec() { Module.resumeMainLoop() }
+      function pauseExec() { Module.pauseMainLoop() }
+
+      function togglePlaypauseControl() {
+        if (Browser.mainLoop.paused) {
+          playpause.value = "Resume execution";
+          playpause.onclick = resumeExec;
+        } else {
+          playpause.value = "Pause execution";
+          playpause.onclick = pauseExec;
+        }
+      }
+
+      setInterval(togglePlaypauseControl, 300);
+    })()
+    </script>
+  </body>
+</html>
