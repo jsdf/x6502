@@ -1,4 +1,5 @@
-This is an Emscripten browser port of the x6502 emulator. 
+This is an Emscripten browser port of the x6502 emulator.
+You can see it in action at: http://jamesfriend.com.au/x6502/
 
 Building:
 Make sure you have emscripten (emcc) and xa on your path.
