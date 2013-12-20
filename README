@@ -1,3 +1,16 @@
+This is an Emscripten browser port of the x6502 emulator. 
+
+Building:
+Make sure you have emscripten (emcc) and xa on your path.
+Run `embuild.sh` to build both the emulator and the demo programs.
+
+Running:
+Serve up x6502.html, x6502.js, and x6502.data with a webserver of some sort.
+For example `npm install http-server; http-server .`
+
+
+Original readme follows...
+
 +-------------------------------------------------------------+
 |                                                             |
 |                           x6502                             |
