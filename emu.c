@@ -8,27 +8,31 @@
 
 #define NEXT_BYTE(cpu) ((cpu)->mem[(cpu)->pc + (pc_offset++)])
 
-void main_loop(cpu *m) {
-    uint8_t opcode;
-    uint8_t arg1, arg2, t1;
-    int8_t s1;
-    uint16_t r1, r2;
+cpu *mcpu;
 
-    // pc_offset is used to read from memory like a stream when processing
-    // bytecode without modifying the pc. pc_start is the memory address of the
-    // currently-executing opcode; if pc == pc_start at the end of a simulation
-    // step, we add pc_offset to get the start of the next instruction. if pc !=
-    // pc_start, we branched so we don't touch the pc.
-    uint8_t pc_offset = 0;
-    uint16_t pc_start;
+uint8_t opcode;
+uint8_t arg1, arg2, t1;
+int8_t s1;
+uint16_t r1, r2;
 
-    // branch_offset is an offset that will be added to the program counter
-    // after we move to the next instruction
-    int8_t branch_offset = 0;
+// pc_offset is used to read from memory like a stream when processing
+// bytecode without modifying the pc. pc_start is the memory address of the
+// currently-executing opcode; if pc == pc_start at the end of a simulation
+// step, we add pc_offset to get the start of the next instruction. if pc !=
+// pc_start, we branched so we don't touch the pc.
+uint8_t pc_offset = 0;
+uint16_t pc_start;
 
-    init_io();
+// branch_offset is an offset that will be added to the program counter
+// after we move to the next instruction
+int8_t branch_offset = 0;
 
-    for (;;) {
+// int cycles_per_step = 100;
+
+void em_main_loop() {
+    cpu *m = mcpu;
+    // int cycles;
+    // for (cycles = 0; cycles < cycles_per_step; cycles++ ) {
         DUMP_DEBUG(m);
 
         reset_emu_flags(m);
@@ -87,7 +91,17 @@ void main_loop(cpu *m) {
         }
 
         m->last_opcode = opcode;
-    }
+    // } // finished cycles
+    return;
 end:
     finish_io();
+}
+
+
+void main_loop(cpu *m) {
+    init_io();
+
+    mcpu = m;
+    emscripten_set_main_loop(em_main_loop, 100, 1);
+
 }

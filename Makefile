@@ -1,4 +1,5 @@
-CC=clang
+# CC=clang
+CC=emcc
 PYTHON=python
 COPTS=-o x6502 -O3 -lpthread -Wall
 DEBUGOPTS=-DDEBUG -O0 -g
